@@ -1,0 +1,164 @@
+The program reads multiple lines from standard input until one of them
+matches the "EXIT" command. Each line is analysed in order to decide whether
+it is a proper command (that matches the mentioned pattern) or not.
+
+If the command is valid, the algorithm executes it internally, printing a
+specific message that suggests its success/failure, depending on the context.
+The accepted commands behave as it follows:
+
+	- LOAD: the process of memorizing a new image; it takes place only if
+	the file that is supposed to be loaded exists (otherwise an error message
+	is thrown as it cannot be opened); it consists in multiple steps:
+
+		* extracting the image details from the text format while omitting
+		every comment and saving them temporarily (magic word, width,
+		height, max value);
+
+		* reading lines one by one in order to check whether further comments
+		appear (before the matrix of pixels);
+
+		in case there are comments found between the detail region and the
+		matrix of pixels, the cursor will be set right after them; otherwise,
+		it will be set after the max value within the file;
+
+		* allocating the necessary memory zone for the image that is meant to
+		be read:
+
+			** if there are no previously memorized images, the current's image
+			details are updated and then the needed memory is allocated;
+
+			** if there is at least one previously memorized image, the current
+			one's memory is deallocated; a new image is allocated, replacing
+			the old one by changing its address; after that, the image details
+			are updated;
+
+		* reading the pixel values, depending on the file type (resulted
+		from the magic word):
+
+			** if the file is text: the cursor is set and the values are read;
+
+			** if the file is binary: the file is closed and reopened in binary
+			mode; the cursor is then set and the values are read;
+
+		finally, the file is closed;
+
+	The other commands imply that an image has been loaded; if not, an
+	error message is printed.
+
+	- SELECT: the process of picking a certain region of the current image
+	determined by an upper-left corner and and a lower-right one if the
+	coordinates are valid (otherwise an error message is printed); it consists
+	in updating the image's details (the corners' coordinates); any further
+	commands that modify the pixels' values are constrained to be applied
+	to this selected area;
+
+	- SELECT ALL: the process of picking the whole region of the current image
+	determined by an upper-left corner and and lower-right one; it consists
+	in updating the image's details (the corners' coordinates); any further
+	commands that modify the pixels' values are constrained to be applied
+	to this selected area;
+
+	- ROTATE: the process of modifying the current's image selection by
+	transposing it in two possibile ways, to the right/left based on
+	an angle (divisible by 90; otherwise an error message is thrown);
+	it is based on the repeated transpose of the selection by 90 degrees
+	(clockwise/counterwise) for angle/90 times; there are two types
+	of rotations:
+
+			* if the selection is smaller than the entire image area,
+			it is supposed to be a square; in this case,
+			the transposing method means:
+
+				** copying the selected pixels' values in an auxiliary
+				matrix;
+
+				** creating another matrix with the same dimensions that
+				will contain the values from the first matrix put in the
+				desired order (using a mathematical identity found
+				between the coordinates);
+
+				** updating the pixels' values from the selection directly
+				within the given image using the second matrix;
+
+				** deallocating the resources used for the auxiliary matrixes;
+
+			* if the entire image is selected, there is no restriction applied
+			to the selection; in this case, the rotation is executed
+			as it follows:
+
+					** allocating memory for a new image having the dimensions
+					swapped (because the image could be rectangular);
+
+					** copying the pixels' values within the new image directly
+					in the correct order (using a mathematical identity found
+					between the coordinates);
+
+					** deallocating the memory used for the old image (as it is
+					no longer needed);
+
+					** updating the image details (width, height, coordinates
+					of the selection corners);
+
+					** replacing the old image with the new one by changing its
+					address;
+
+	- CROP: the process of reducing the current's image area to the
+	previously selected zone; it mainly refers to:
+
+			* allocating memory for a new image having the same
+			dimensions as the selection;
+
+			* copying the pixels' values within the new image in the same order
+			as they are found within the given image;
+
+			* deallocating the memory used for the old image (as it is
+			no longer needed);
+
+			* updating the image details (width, height, coordinates
+			of the selection corners);
+
+			* replacing the old image with the new one by changing its
+			address;
+
+	- APPLY: the process of modifying coloured pixels' values found in 
+	a previously chosen selection by using a specific kernel based on the
+	desired filter (if the image is grayscale an error message is printed);
+	it consists in:
+
+			* copying all the initial pixels' values within an auxiliary image
+			(because the changes will be executed directly on the 
+			current image) as they are needed for the mathematical operations;
+
+			* checking every pixel from the selection if it has enough
+			neighbours (this condition is compulsory as a 3x3 
+			kernel is applied so as to obtain its new value); if so:
+
+				** there are 3 sums that are calculated (one for each color
+				channel) by adding the products of the channel value of every
+				neighbour (including the current pixel) and the corresponding
+				value found in the kernel;
+
+				** the sums are corrected if their values are not between
+				0 and 255 (the minimum and maximum possible values of
+				a color channel);
+
+				** the new value of the pixel is represented by these 3 sums;
+
+			* deallocating the resources used for the auxiliary matrix;
+
+	- SAVE: the process of printing the content of the current image to
+	a desired file; it refers to:
+
+			* creating a file that is opened in text mode;
+
+			* writing the image details (magic word, width, height, max value)
+			in the text format;
+
+			* if the "ascii" parameter is mentioned, the image's pixels are
+			written in the text format; if not, the file is closed and
+			reopened in append-binary mode to write the pixels;
+
+			finally, the file is closed;
+	
+	- EXIT: the process of deallocating the memory used for storing
+	the images' pixels.
